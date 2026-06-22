@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dao.GonggaoDao">
+
+	<resultMap id="BaseResultMap" type="com.entity.GonggaoEntity">
+		<id column="id" property="id"/>
+		<result column="title" property="title"/>
+		<result column="content" property="content"/>
+		<result column="status" property="status"/>
+		<result column="publisher_role" property="publisherRole"/>
+		<result column="publisher_id" property="publisherId"/>
+		<!-- 转成毫秒时间戳，前端直接 new Date(数字) -->
+		<result column="addtime" property="addtime"/>
+		<result column="publish_time" property="publishTime"/>
+	</resultMap>
+
+	<sql id="BaseCols">
+		id,title,content,status,publisher_role,publisher_id,
+        UNIX_TIMESTAMP(addtime)*1000 as addtime,
+        IFNULL(UNIX_TIMESTAMP(publish_time)*1000, NULL) as publish_time
+	</sql>
+
+	<insert id="insert" parameterType="com.entity.GonggaoEntity" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO gonggao
+		(title,content,status,publisher_role,publisher_id,addtime,publish_time)
+		VALUES
+			(#{title},#{content},#{status},#{publisherRole},#{publisherId},NOW(),#{publishTime})
+	</insert>
+
+
+	<update id="updateById" parameterType="com.entity.GonggaoEntity">
+		UPDATE gonggao
+		SET title=#{title},
+			content=#{content},
+			status=#{status}
+		WHERE id=#{id}
+	</update>
+
+	<delete id="deleteById">
+		DELETE FROM gonggao WHERE id=#{id}
+	</delete>
+
+	<select id="selectById" resultMap="BaseResultMap">
+		SELECT <include refid="BaseCols"/> FROM gonggao WHERE id=#{id}
+	</select>
+
+	<!-- 学生端：只看已发布 -->
+	<select id="selectStudentList" resultMap="BaseResultMap">
+		SELECT <include refid="BaseCols"/>
+		FROM gonggao
+		WHERE status=1
+		ORDER BY publish_time DESC, addtime DESC
+	</select>
+
+	<!-- 教师端：只看自己 -->
+	<select id="selectTeacherList" resultMap="BaseResultMap">
+		SELECT <include refid="BaseCols"/>
+		FROM gonggao
+		WHERE publisher_role='teacher'
+		AND publisher_id=#{publisherId}
+		ORDER BY addtime DESC
+	</select>
+
+	<!-- 管理员：全部 -->
+	<select id="selectAdminList" resultMap="BaseResultMap">
+		SELECT <include refid="BaseCols"/>
+		FROM gonggao
+		ORDER BY addtime DESC
+	</select>
+
+	<update id="publish">
+		UPDATE gonggao
+		SET status=1, publish_time=NOW()
+		WHERE id=#{id}
+	</update>
+
+	<update id="unpublish">
+		UPDATE gonggao SET status=0 WHERE id=#{id}
+	</update>
+
+	<delete id="deleteTeacherOwn">
+		DELETE FROM gonggao
+		WHERE id=#{id}
+		  AND publisher_role='teacher'
+		  AND publisher_id=#{publisherId}
+	</delete>
+
+	<update id="updateTeacherOwn" parameterType="com.entity.GonggaoEntity">
+		UPDATE gonggao
+		SET title=#{title},
+			content=#{content},
+			status=#{status}
+		WHERE id=#{id}
+		  AND publisher_role='teacher'
+		  AND publisher_id=#{publisherId}
+	</update>
+
+	<update id="publishTeacherOwn">
+		UPDATE gonggao
+		SET status=1, publish_time=NOW()
+		WHERE id=#{id}
+		  AND publisher_role='teacher'
+		  AND publisher_id=#{publisherId}
+	</update>
+
+	<update id="unpublishTeacherOwn">
+		UPDATE gonggao
+		SET status=0
+		WHERE id=#{id}
+		  AND publisher_role='teacher'
+		  AND publisher_id=#{publisherId}
+	</update>
+
+</mapper>
